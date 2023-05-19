@@ -1,6 +1,7 @@
-package pkg
+package hdwallet
 
 import (
+	"errors"
 	"github.com/btcsuite/btcd/btcec/v2"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/hdkeychain"
@@ -8,8 +9,17 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
+	"github.com/tyler-smith/go-bip39"
 	"log"
 )
+
+func MnemonicToSeed(mnemonic, password string) ([]byte, error) {
+	if !bip39.IsMnemonicValid(mnemonic) {
+		return nil, errors.New("invalid mnemonic")
+	}
+
+	return bip39.NewSeed(mnemonic, password), nil
+}
 
 func CreateHDWallet(seed []byte, params *chaincfg.Params) (*hdkeychain.ExtendedKey, error) {
 	return hdkeychain.NewMaster(seed, params)
@@ -119,14 +129,14 @@ func AddOutput(value int64, p2shAddr, p2wpkhAddr btcutil.Address, tx *wire.MsgTx
 	return nil
 }
 
-func Sign(tx *wire.MsgTx, txIn *wire.TxIn, pubKeyHash []byte, privateKey *btcec.PrivateKey) {
+func Sign(tx *wire.MsgTx, txIn *wire.TxIn, pubKeyHash []byte, privateKey *btcec.PrivateKey) error {
 	subScript, err := txscript.NewScriptBuilder().
 		AddOp(txscript.OP_0).
 		AddData(pubKeyHash).
 		Script()
 
 	if err != nil {
-
+		return err
 	}
 	// Calculate the signature hash for the input being signed.
 	hashType := txscript.SigHashAll
@@ -138,8 +148,10 @@ func Sign(tx *wire.MsgTx, txIn *wire.TxIn, pubKeyHash []byte, privateKey *btcec.
 		Script()
 
 	if err != nil {
-
+		return err
 	}
 	// Set the signature script for the input being signed.
 	txIn.SignatureScript = sigScript
+
+	return nil
 }
